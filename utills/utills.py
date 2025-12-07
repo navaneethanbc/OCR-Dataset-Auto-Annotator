@@ -121,7 +121,18 @@ class Image:
         """
         unwarp = Unwarp()
         # Convert OpenCV image to PIL Image for compatibility
-        pil_image = PILImage.fromarray(cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB))
+        # Downscale large images to reduce memory usage during unwarp
+        img_bgr = self.image
+        h, w = img_bgr.shape[:2]
+        max_side = max(h, w)
+        target_max = 2000  # cap largest side to this many pixels
+        if max_side > target_max:
+            scale = target_max / float(max_side)
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
+            img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        pil_image = PILImage.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
 
         # Prepare input using Unwarp instance
         resized_input, original_input, original_size = unwarp.prepare_input(pil_image)

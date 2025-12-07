@@ -224,21 +224,35 @@ def main():
             st.warning("Please upload a PDF and its corresponding page images first.")
         else:
             num_pdf_pages = pdf_pages_count
-            page_num = list(uploaded_images.keys())[st.session_state.page_num_idx]
-
-            
-
-            page_num = list(uploaded_images.keys())[st.session_state.page_num_idx]
-            st.markdown(f"**Viewing Page: {page_num+1} / {num_pdf_pages}**")
+            # Sort uploaded image page numbers for consistent navigation
+            sorted_img_pages = sorted(list(uploaded_images.keys()))
+            # Clamp navigation index to available images
+            st.session_state.page_num_idx = max(0, min(st.session_state.page_num_idx, len(sorted_img_pages)-1))
+            page_num = sorted_img_pages[st.session_state.page_num_idx]
+            # Guard: uploaded image page may exceed PDF page count
+            if page_num >= num_pdf_pages:
+                st.warning(f"Uploaded image references page {page_num+1}, but PDF has only {num_pdf_pages} pages.")
+                st.markdown(f"**Viewing Image Page: {page_num+1} / {len(sorted_img_pages)}**")
+            else:
+                st.markdown(f"**Viewing Page: {page_num+1} / {num_pdf_pages}**")
             # st.markdown(f"**Image: {page_num+1} / {len(list(uploaded_images.keys()))}**")
             current_img = st.session_state.uploaded_images.get(page_num)
             if current_img is None:
                 st.warning(f"No scanned image found for page {page_num}.")
             else:
                 # Extract bounding boxes if not done
-                if page_num not in st.session_state.extraction_results:
-                    pdf_page = st.session_state.pdf_doc.load_page(page_num)
-                    extracted, corrected_current_img = extract_bbox_with_text(pdf_page, current_img)
+                if page_num not in st.session_state.extraction_results and page_num < num_pdf_pages:
+                    try:
+                        pdf_page = st.session_state.pdf_doc.load_page(page_num)
+                    except Exception as e:
+                        st.error(f"Failed to load PDF page {page_num}: {e}")
+                        st.stop()
+                    try:
+                        extracted, corrected_current_img = extract_bbox_with_text(pdf_page, current_img)
+                    except Exception as e:
+                        st.error(f"Extraction error on page {page_num}: {e}")
+                        st.stop()
+                    
                     st.session_state.corrected_upload_images[page_num] = corrected_current_img
                     st.session_state.extraction_results[page_num] = []
                     for bbox,text in extracted.items():
@@ -252,8 +266,10 @@ def main():
                             "padding_corrected": False,
                             "pl": 0, "pr": 0, "pt": 0, "pb": 0
                         })
+                    
 
                 all_segments = st.session_state.extraction_results[page_num]
+                
                 # total_segments = len(all_segments)
 
                 # st.write("Segments per page:")
@@ -292,7 +308,7 @@ def main():
                 nav_left,dummuy_col_1,dummuy_col_2 ,nav_mid,dummuy_col_3,dummuy_col_4, nav_right = st.columns(7)
                 with nav_left:
                     st.markdown("<div style='text-align: right;'>", unsafe_allow_html=True)
-                    if st.button("⬅️ Prev PDF Page", disabled=(st.session_state.page_num_idx<=0)):
+                    if st.button("⬅️ Prev Page", disabled=(st.session_state.page_num_idx<=0)):
                         st.session_state.page_num_idx -= 1
                         # Reset segment pagination
                         # st.session_state.segment_page_num = 0
@@ -300,11 +316,14 @@ def main():
                     st.markdown("</div>", unsafe_allow_html=True)
                 with nav_mid:
                     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-                    st.markdown(f"**Viewing Page: {page_num+1} / {num_pdf_pages}**")
+                    if page_num < num_pdf_pages:
+                        st.markdown(f"**Viewing Page: {page_num+1} / {num_pdf_pages}**")
+                    else:
+                        st.markdown(f"**Viewing Image Page: {page_num+1} / {len(sorted_img_pages)}**")
                     st.markdown("</div>", unsafe_allow_html=True)
                     download_btn(all_segments,page_num)
                 with nav_right:                    
-                    if st.button("Next PDF Page ➡️", disabled=(st.session_state.page_num_idx>=len(list(uploaded_images.keys()))-1)):
+                    if st.button("Next Page ➡️", disabled=(st.session_state.page_num_idx>=len(sorted_img_pages)-1)):
                         st.session_state.page_num_idx += 1
                         # st.session_state.segment_page_num = 0
                         st.rerun()
