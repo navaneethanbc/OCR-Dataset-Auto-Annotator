@@ -34,6 +34,9 @@ def init_session_state():
 
 
 def render_dpad(line_info, key_prefix="arrow"):
+    # Initialize padding history if not already done
+    if "padding_history" not in line_info:
+        line_info["padding_history"] = [(0, 0, 0, 0)]
 
     # Use session state to track toggle state
     if f"{key_prefix}_edit_mode" not in st.session_state:
@@ -46,35 +49,81 @@ def render_dpad(line_info, key_prefix="arrow"):
             st.rerun(scope="fragment")
     else:
         # Render the D-pad
-        row1 = st.columns([1, 1,1])
+        row1 = st.columns([1, 1, 1])
         with row1[0]:
             if st.button("↺", key=f"{key_prefix}_reset"):
                 line_info["pb"] = 0
                 line_info["pt"] = 0
                 line_info["pl"] = 0
                 line_info["pr"] = 0
+                line_info["padding_history"] = [(0, 0, 0, 0)]
                 line_info["padding_corrected"] = False
                 st.rerun(scope="fragment")
         with row1[1]:
-            if st.button("▲", key=f"{key_prefix}_up"):
-                line_info["pb"] += 10
+            if st.button("▲", key=f"{key_prefix}_expand_up"):
+                line_info["pb"] += 5
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
                 line_info["padding_corrected"] = True
                 st.rerun(scope="fragment")
+        with row1[2]:
+            undo_disabled = len(line_info["padding_history"]) <= 1
+            if st.button("↶", key=f"{key_prefix}_undo", disabled=undo_disabled):
+                if len(line_info["padding_history"]) > 1:
+                    line_info["padding_history"].pop()
+                    pl, pr, pt, pb = line_info["padding_history"][-1]
+                    line_info["pl"] = pl
+                    line_info["pr"] = pr
+                    line_info["pt"] = pt
+                    line_info["pb"] = pb
+                    if len(line_info["padding_history"]) == 1:
+                        line_info["padding_corrected"] = False
+                    st.rerun(scope="fragment")
 
-        row2 = st.columns([1, 1,1])
+        row2 = st.columns([1, 1, 1])
         with row2[0]:
-            if st.button("◀", key=f"{key_prefix}_left"):
+            if st.button("◀", key=f"{key_prefix}_expand_left"):
                 line_info["pl"] += 10
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
                 line_info["padding_corrected"] = True
                 st.rerun(scope="fragment")
         with row2[1]:
-             if st.button("▼", key=f"{key_prefix}_down"):
-                line_info["pt"] += 10
+             if st.button("▼", key=f"{key_prefix}_expand_down"):
+                line_info["pt"] += 5
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
                 line_info["padding_corrected"] = True
                 st.rerun(scope="fragment")
         with row2[2]:
-            if st.button("▶", key=f"{key_prefix}_right"):
+            if st.button("▶", key=f"{key_prefix}_expand_right"):
                 line_info["pr"] += 10
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
+                line_info["padding_corrected"] = True
+                st.rerun(scope="fragment")
+
+        row3 = st.columns([1, 1, 1])
+        with row3[1]:
+            if st.button("▽", key=f"{key_prefix}_shrink_up"):
+                line_info["pb"] -= 2
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
+                line_info["padding_corrected"] = True
+                st.rerun(scope="fragment")
+
+        row4 = st.columns([1, 1, 1])
+        with row4[0]:
+            if st.button("▷", key=f"{key_prefix}_shrink_left"):
+                line_info["pl"] -= 20
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
+                line_info["padding_corrected"] = True
+                st.rerun(scope="fragment")
+        with row4[1]:
+             if st.button("△", key=f"{key_prefix}_shrink_down"):
+                line_info["pt"] -= 2
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
+                line_info["padding_corrected"] = True
+                st.rerun(scope="fragment")
+        with row4[2]:
+            if st.button("◁", key=f"{key_prefix}_shrink_right"):
+                line_info["pr"] -= 20
+                line_info["padding_history"].append((line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"]))
                 line_info["padding_corrected"] = True
                 st.rerun(scope="fragment")
 
@@ -264,7 +313,8 @@ def main():
                             "approved": True,
                             "text_corrected": False,
                             "padding_corrected": False,
-                            "pl": 0, "pr": 0, "pt": 0, "pb": 0
+                            "pl": 0, "pr": 0, "pt": 0, "pb": 0,
+                            "padding_history": [(0, 0, 0, 0)]
                         })
                     
 
