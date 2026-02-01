@@ -4,10 +4,10 @@ const fmBaminiToUnicode = function (text) {
   // Order matters: apply longer sequences first
   // Decode literal \uXXXX sequences into actual Unicode first
   text = text.replace(/\\u([0-9A-Fa-f]{4})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
-  // Ensure micro sign maps explicitly regardless of editor encoding
-  text = text.replace(/\u00B5/g, "ர");
-  // Also map Greek small letter mu (U+03BC) if present
-  text = text.replace(/\u03BC/g, "ர");
+  // // Ensure micro sign maps explicitly regardless of editor encoding
+  // text = text.replace(/\u00B5/g, "ர");
+  // // Also map Greek small letter mu (U+03BC) if present
+  // text = text.replace(/\u03BC/g, "ர");
 
 
   // Additional exact mappings (Eelam-style) provided
