@@ -246,37 +246,49 @@ def main():
         uploaded_imgs = st.file_uploader("Upload page images", 
                                          type=["jpg","jpeg","png"],
                                          accept_multiple_files=True)
-        if uploaded_imgs:
-            # Clear previous uploads and extraction results
+        
+        # Track uploaded file names to detect changes
+        current_file_names = set([f.name for f in uploaded_imgs]) if uploaded_imgs else set()
+        if "last_uploaded_file_names" not in st.session_state:
+            st.session_state.last_uploaded_file_names = set()
+        
+        # Only clear if files actually changed
+        if current_file_names != st.session_state.last_uploaded_file_names:
             st.session_state.uploaded_images = {}
             st.session_state.corrected_upload_images = {}
             st.session_state.extraction_results = {}
             st.session_state.page_num_idx = 0
-            
+            st.session_state.last_uploaded_file_names = current_file_names
+        
+        if uploaded_imgs:
             for img_file in uploaded_imgs:
                 fname = img_file.name
                 try:
                     pnum_str = fname.split("_")[1].split(".")[0]
                     pnum = int(pnum_str)
                     
-                     # Read the uploaded file as a byte array
-                    file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+                    # Only process if not already in uploaded_images
+                    if pnum not in st.session_state.uploaded_images:
+                        # Read the uploaded file as a byte array
+                        file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
 
-                    # Decode the byte stream to an image (OpenCV reads it in BGR format)
-                    image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                        # Decode the byte stream to an image (OpenCV reads it in BGR format)
+                        image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-                    # Convert the image to RGB format
-                    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+                        # Convert the image to RGB format
+                        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
-                    st.session_state.uploaded_images[pnum] = image_rgb
+                        st.session_state.uploaded_images[pnum] = image_rgb
                 except Exception as e:
                     st.warning(f"Could not parse page number from filename: {fname}")
         else:
             # Clear session state when no files are uploaded
-            st.session_state.uploaded_images = {}
-            st.session_state.corrected_upload_images = {}
-            st.session_state.extraction_results = {}
-            st.session_state.page_num_idx = 0
+            if st.session_state.uploaded_images:  # Only if there were files before
+                st.session_state.uploaded_images = {}
+                st.session_state.corrected_upload_images = {}
+                st.session_state.extraction_results = {}
+                st.session_state.page_num_idx = 0
+                st.session_state.last_uploaded_file_names = set()
 
         # Show status
         pdf_pages_count = len(st.session_state.pdf_doc) if st.session_state.pdf_doc else 0
