@@ -11,26 +11,40 @@ def init_session_state():
     """
     Initialize all required session state variables if not already set.
     """
+    # if "pdf_file" not in st.session_state:
+    #     st.session_state.pdf_file = None
+    # if "pdf_doc" not in st.session_state:
+    #     st.session_state.pdf_doc = None
+    # if "uploaded_images" not in st.session_state:
+    #     # { page_num: PIL.Image }
+    #     st.session_state.uploaded_images = {}
+    #     st.session_state.corrected_upload_images = {}
+    #     st.session_state.page_num_idx = 0
+    # if "extraction_results" not in st.session_state:
+    #     # extraction_results[page_number] = [
+    #     #   { "bbox": (...), "text": "...", "approved": bool, "pl": int, "pr": int, "pt": int, "pb": int }
+    #     # ]
+    #     st.session_state.extraction_results = {}
+    # if "current_page_num" not in st.session_state:
+    #     # Which PDF page the user is on
+    #     st.session_state.current_page_num = 0
+    # # if "segment_page_num" not in st.session_state:
+    # #     # Pagination index among text segments
+    # #     st.session_state.segment_page_num = 0
     if "pdf_file" not in st.session_state:
         st.session_state.pdf_file = None
+    if "pdf_file_obj" not in st.session_state:
+        st.session_state.pdf_file_obj = None
     if "pdf_doc" not in st.session_state:
         st.session_state.pdf_doc = None
     if "uploaded_images" not in st.session_state:
-        # { page_num: PIL.Image }
         st.session_state.uploaded_images = {}
         st.session_state.corrected_upload_images = {}
         st.session_state.page_num_idx = 0
     if "extraction_results" not in st.session_state:
-        # extraction_results[page_number] = [
-        #   { "bbox": (...), "text": "...", "approved": bool, "pl": int, "pr": int, "pt": int, "pb": int }
-        # ]
         st.session_state.extraction_results = {}
     if "current_page_num" not in st.session_state:
-        # Which PDF page the user is on
         st.session_state.current_page_num = 0
-    # if "segment_page_num" not in st.session_state:
-    #     # Pagination index among text segments
-    #     st.session_state.segment_page_num = 0
 
 
 def render_dpad(line_info, key_prefix="arrow"):
@@ -226,13 +240,54 @@ def main():
     tab_upload, tab_approve, tab_how = st.tabs(["Upload Files", "Annotation","How to Use"])
 
     # ---- TAB 1: UPLOAD & PROGRESS
+    # with tab_upload:
+    #     st.header("1. Upload PDF")
+    #     pdf_file = st.file_uploader("Select a PDF file", type=["pdf"], key="pdf_uploader")
+    #     if pdf_file is not None:
+    #         # Load PDF
+    #         st.session_state.pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    #         st.session_state.pdf_file = pdf_file
+
+    #     st.header("2. Upload Page Images")
+    #     st.write("Name each file as `page_{page_num}.jpg` or `.png` to match the PDF page.")
+    #     uploaded_imgs = st.file_uploader("Upload page images", 
+    #                                      type=["jpg","jpeg","png"],
+    #                                      accept_multiple_files=True)
+    #     if uploaded_imgs:
+    #         for img_file in uploaded_imgs:
+    #             fname = img_file.name
+    #             try:
+    #                 pnum_str = fname.split("_")[1].split(".")[0]
+    #                 pnum = int(pnum_str)
+                    
+    #                  # Read the uploaded file as a byte array
+    #                 file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+
+    #                 # Decode the byte stream to an image (OpenCV reads it in BGR format)
+    #                 image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+    #                 # Convert the image to RGB format
+    #                 image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+
+    #                 st.session_state.uploaded_images[pnum] = image_rgb
+    #             except Exception as e:
+    #                 st.warning(f"Could not parse page number from filename: {fname}")
+
+    #     # Show status
+    #     pdf_pages_count = len(st.session_state.pdf_doc) if st.session_state.pdf_doc else 0
+    #     uploaded_images = st.session_state.uploaded_images
+    #     st.write(f"**PDF Pages Count**: {pdf_pages_count}")
+    #     st.write(f"**Uploaded Images Count**: {len(uploaded_images)}")
+
     with tab_upload:
         st.header("1. Upload PDF")
         pdf_file = st.file_uploader("Select a PDF file", type=["pdf"], key="pdf_uploader")
         if pdf_file is not None:
-            # Load PDF
-            st.session_state.pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-            st.session_state.pdf_file = pdf_file
+            # Load PDF only if it's a new file
+            if st.session_state.pdf_file != pdf_file.name:
+                st.session_state.pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+                st.session_state.pdf_file = pdf_file.name
+                st.session_state.pdf_file_obj = pdf_file
 
         st.header("2. Upload Page Images")
         st.write("Name each file as `page_{page_num}.jpg` or `.png` to match the PDF page.")
@@ -246,7 +301,7 @@ def main():
                     pnum_str = fname.split("_")[1].split(".")[0]
                     pnum = int(pnum_str)
                     
-                     # Read the uploaded file as a byte array
+                    # Read the uploaded file as a byte array
                     file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
 
                     # Decode the byte stream to an image (OpenCV reads it in BGR format)
