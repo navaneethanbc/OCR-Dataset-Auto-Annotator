@@ -233,6 +233,13 @@ def main():
             # Load PDF
             st.session_state.pdf_doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
             st.session_state.pdf_file = pdf_file
+        else:
+            # Clear PDF when removed
+            st.session_state.pdf_file = None
+            st.session_state.pdf_doc = None
+            st.session_state.extraction_results = {}
+            st.session_state.corrected_upload_images = {}
+            st.session_state.page_num_idx = 0
 
         st.header("2. Upload Page Images")
         st.write("Name each file as `page_{page_num}.jpg` or `.png` to match the PDF page.")
@@ -240,6 +247,12 @@ def main():
                                          type=["jpg","jpeg","png"],
                                          accept_multiple_files=True)
         if uploaded_imgs:
+            # Clear previous uploads and extraction results
+            st.session_state.uploaded_images = {}
+            st.session_state.corrected_upload_images = {}
+            st.session_state.extraction_results = {}
+            st.session_state.page_num_idx = 0
+            
             for img_file in uploaded_imgs:
                 fname = img_file.name
                 try:
@@ -258,6 +271,12 @@ def main():
                     st.session_state.uploaded_images[pnum] = image_rgb
                 except Exception as e:
                     st.warning(f"Could not parse page number from filename: {fname}")
+        else:
+            # Clear session state when no files are uploaded
+            st.session_state.uploaded_images = {}
+            st.session_state.corrected_upload_images = {}
+            st.session_state.extraction_results = {}
+            st.session_state.page_num_idx = 0
 
         # Show status
         pdf_pages_count = len(st.session_state.pdf_doc) if st.session_state.pdf_doc else 0
