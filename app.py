@@ -166,6 +166,28 @@ def show_segment_compact(segment_idx, line_info, base_img, unique_tag=""):
 
     # (A) Cropped image
     with col_img:
+        # try:
+        #     cropped_img = Image(base_img).crop(
+        #         line_info["bbox"],
+        #         pl=line_info["pl"],
+        #         pr=line_info["pr"],
+        #         pt=line_info["pt"],
+        #         pb=line_info["pb"]
+        #     )
+            
+        #     # Check if the cropped image is valid and has dimensions
+        #     if cropped_img is not None and cropped_img.size > 0:
+        #         if cropped_img.shape[0] > 0 and cropped_img.shape[1] > 0:
+        #             st.image(cropped_img)
+        #         else:
+        #             st.error("Crop area collapsed to 0 pixels. Reset (↺) padding.")
+        #     else:
+        #         st.error("Invalid crop area. Either undo (↶) or reset (↺) padding.")
+        # except Exception as e:
+        #     st.error(f"Cropping error: {e}")
+        #     if st.button("Reset Padding for this segment", key=f"err_res_{unique_tag}_{segment_idx}"):
+        #         line_info["pl"] = line_info["pr"] = line_info["pt"] = line_info["pb"] = 0
+        #         st.rerun(scope="fragment")
         cropped_img = Image(base_img).crop(
             line_info["bbox"],
             pl=line_info["pl"],
@@ -173,7 +195,23 @@ def show_segment_compact(segment_idx, line_info, base_img, unique_tag=""):
             pt=line_info["pt"],
             pb=line_info["pb"]
         )
-        st.image(cropped_img )
+
+        # CHECK: Is the image valid?
+        if cropped_img is not None and cropped_img.size > 0:
+            # Image is healthy, show it
+            st.image(cropped_img)
+        else:
+            # ERROR: The crop collapsed. 
+            # 1. Stop storing the history (remove the bad entry)
+            if len(line_info.get("padding_history", [])) > 1:
+                line_info["padding_history"].pop()
+                # 2. Revert coordinates to the last known good state
+                pl, pr, pt, pb = line_info["padding_history"][-1]
+                line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"] = pl, pr, pt, pb
+            
+            # 3. Inform the user and force a rerun to show the reverted state
+            st.error("Invalid adjustment: Crop area disappeared. Reverting...")
+            st.rerun(scope="fragment")
 
     # (B) D-pad
     with col_dpad:
