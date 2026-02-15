@@ -6,6 +6,9 @@ import numpy as np
 from utills.detect_bbox import extract_bbox_with_text
 from utills.utills import Image
 from utills.utills import utills
+import base64
+from io import BytesIO
+from PIL import Image as PILImage # To distinguish from your custom Image class
 
 def init_session_state():
     """
@@ -127,7 +130,14 @@ def render_dpad(line_info, key_prefix="arrow"):
                 line_info["padding_corrected"] = True
                 st.rerun(scope="fragment")
 
-
+def get_image_base64(img_array):
+    """Convert a numpy array image to a base64 string."""
+    # Convert numpy array to PIL Image
+    pil_img = PILImage.fromarray(img_array)
+    buffered = BytesIO()
+    pil_img.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/jpeg;base64,{img_str}"
 
 
 @st.fragment
@@ -188,6 +198,33 @@ def show_segment_compact(segment_idx, line_info, base_img, unique_tag=""):
         #     if st.button("Reset Padding for this segment", key=f"err_res_{unique_tag}_{segment_idx}"):
         #         line_info["pl"] = line_info["pr"] = line_info["pt"] = line_info["pb"] = 0
         #         st.rerun(scope="fragment")
+        # ---------------------------------------------------------------------------
+        # cropped_img = Image(base_img).crop(
+        #     line_info["bbox"],
+        #     pl=line_info["pl"],
+        #     pr=line_info["pr"],
+        #     pt=line_info["pt"],
+        #     pb=line_info["pb"]
+        # )
+
+        # # CHECK: Is the image valid?
+        # if cropped_img is not None and cropped_img.size > 0:
+        #     # Image is healthy, show it
+        #     st.image(cropped_img)
+        # else:
+        #     # ERROR: The crop collapsed. 
+        #     # 1. Stop storing the history (remove the bad entry)
+        #     if len(line_info.get("padding_history", [])) > 1:
+        #         line_info["padding_history"].pop()
+        #         # 2. Revert coordinates to the last known good state
+        #         pl, pr, pt, pb = line_info["padding_history"][-1]
+        #         line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"] = pl, pr, pt, pb
+            
+        #     # 3. Inform the user and force a rerun to show the reverted state
+        #     st.error("Invalid adjustment: Crop area disappeared. Reverting...")
+        #     st.rerun(scope="fragment")
+        # ---------------------------------------------------------------------------
+        # 1. Calculate the crop
         cropped_img = Image(base_img).crop(
             line_info["bbox"],
             pl=line_info["pl"],
@@ -198,19 +235,20 @@ def show_segment_compact(segment_idx, line_info, base_img, unique_tag=""):
 
         # CHECK: Is the image valid?
         if cropped_img is not None and cropped_img.size > 0:
-            # Image is healthy, show it
-            st.image(cropped_img)
+            # Convert to Base64 instead of using st.image
+            img_base64 = get_image_base64(cropped_img)
+            # Display via HTML to prevent 404 errors
+            st.markdown(
+                f'<img src="{img_base64}" style="width:100%; border:1px solid #ccc; border-radius:5px;">',
+                unsafe_allow_html=True
+            )
         else:
-            # ERROR: The crop collapsed. 
-            # 1. Stop storing the history (remove the bad entry)
-            if len(line_info.get("padding_history", [])) > 1:
+            # Revert logic if the crop collapsed
+            if "padding_history" in line_info and len(line_info["padding_history"]) > 1:
                 line_info["padding_history"].pop()
-                # 2. Revert coordinates to the last known good state
                 pl, pr, pt, pb = line_info["padding_history"][-1]
                 line_info["pl"], line_info["pr"], line_info["pt"], line_info["pb"] = pl, pr, pt, pb
-            
-            # 3. Inform the user and force a rerun to show the reverted state
-            st.error("Invalid adjustment: Crop area disappeared. Reverting...")
+            st.error("Invalid crop area. Reverting...")
             st.rerun(scope="fragment")
 
     # (B) D-pad
